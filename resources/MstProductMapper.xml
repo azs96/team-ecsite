@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="jp.co.internous.quest.model.mapper.MstProductMapper">
+
+<select id="findById" resultType="jp.co.internous.quest.model.domain.MstProduct">
+	SELECT * FROM mst_product WHERE id = #{id}
+</select>
+
+<!-- カテゴリー未選択の場合（category == 0) -->
+<select id="findByItemName" resultType="jp.co.internous.quest.model.domain.MstProduct">
+	<choose>
+		<!-- 検索ワード（itemName)も未入力の場合  findAll -->
+		<when test="itemNameList[0].isEmpty()">
+		SELECT * FROM mst_product
+		</when>
+		<!-- 検索ワードは入力されている場合 -->
+		<otherwise>
+		SELECT * FROM mst_product
+			<foreach item="item" collection="itemNameList" index="i">
+				<choose>
+					<when test="i == 0">
+					WHERE product_name LIKE '%${item}%'
+					</when>
+					<otherwise>
+					OR product_name LIKE '%${item}%'
+					</otherwise>
+				</choose>
+			</foreach>
+		</otherwise>
+	</choose>
+</select>
+
+<!-- カテゴリが選択されている場合 -->
+<select id="findByCategoryIdAndItemName" resultType="jp.co.internous.quest.model.domain.MstProduct">
+	SELECT * FROM mst_product WHERE category_id = #{categoryId}
+	<!--検索ワードが入力されていた場合 -->
+	<if test="itemNameList[0].isEmpty() == false">
+	AND
+		<foreach item="item" collection="itemNameList" index="i" open="(" close=")">
+			<choose>
+				<when test="i == 0">
+				product_name LIKE '%${item}%'
+				</when>
+				<otherwise>
+				OR product_name LIKE '%${item}%'
+				</otherwise>
+			</choose>
+		</foreach>
+	</if>
+</select>
+
+</mapper>

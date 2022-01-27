@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+
+<head>
+<meta charset="UTF-8" />
+<link href="/css/reset.css" th:href="@{/css/reset.css}" rel="stylesheet" />
+<link href="/css/style.css" th:href="@{/css/style.css}" rel="stylesheet" />
+<title>Autumn Market</title>
+</head>
+
+<body>
+<header th:insert="fragments/page_header::pageHeader"></header>
+
+<main>
+	<div class="container">
+		カテゴリ 
+			<select name="category" id="category">
+				<option value="0"></option>
+				<option th:inline="text" th:each="category : ${categories}" th:value="${category.id}">[[${category.categoryName}]]</option>
+			</select>
+		商品名（部分一致）
+			<input type="text" name="itemName" id="itemName"/>
+			<button type="submit" id="searchBtn">検索</button>
+
+		<div class="noData hidden">
+			<p class="info">検索結果はありません。</p>
+		</div>
+
+		<table class="top">
+			<thead>
+				<tr>
+					<th>画像</th><th>商品名</th><th>価格(円)</th><th>個数</th><th>カート</th>
+				</tr>
+			</thead>
+			<tbody>
+	 			<tr th:if="${products}" th:each="item: ${products}">
+					<td class="image">
+						<a href="/quest/product/" th:href="@{/quest/product/{id}(id=${item.id})}">
+							<img class="itemImage" th:src="@{{imagePath} (imagePath=${item.imageFullPath}) }" />
+						</a>
+					</td>
+					<td>
+						<a href="/quest/product/" th:href="@{/quest/product/{id}(id=${item.id})}">
+							<label th:text="${item.productName}"></label>
+						</a>
+					</td>
+					<td class="number" th:text="${item.price}" />
+					<td class="componentTd">
+						<input type="number" id="productCount" class="count number" name="productCount" value="0" min="0" step="1"/>
+						<input type="hidden" id="productId" name="productId" th:value="${item.id}"/>
+					</td>
+					<td class="componentTd">
+						<button id="addBtn">追加</button>
+					</td>
+				</tr>
+			</tbody>
+		</table>
+	</div>
+
+	<script>
+
+	$(() => {
+		$('#searchBtn').on('click', search);
+		$('table.top').on('click', '#addBtn', add);
+	});
+
+	/* 選択されたカテゴリ、入力された検索ワードをもとに該当する商品情報を検索 */
+	let search = (event) => {
+		let loginForm = {
+			"category" : $('#category').val(),
+			"itemName": $('#itemName').val()
+		}
+
+		$.ajax({
+			type: 'POST',
+			url: '/quest/searchItem',
+			data: JSON.stringify(loginForm),
+			contentType: 'application/json',
+			datatype: 'json',
+			scriptCharset: 'utf-8'
+		})
+		.then(
+			(result) => {
+				let productList = JSON.parse(result);
+				let tbody = $('table.top').find('tbody');
+				$(tbody).children().remove();
+				/* 返ってきたproductListの有無によってnoDataクラスとtableのtheadの表示を切り替える */
+				if(productList == null || Object.keys(productList).length === 0){
+					$('.noData').removeClass("hidden");
+					$('table.top').addClass("hidden");
+				} else {
+					$('.noData').addClass("hidden");
+					$('table.top').removeClass("hidden"); 
+
+					productList.forEach(function(product){
+						const tr = $('<tr />');
+
+						$(`<td class="image"><a href="/quest/product/${product.id}"><img class="itemImage" src="${product.imageFullPath}"></a></td>`).appendTo(tr);
+						$(`<td><a href="/quest/product/${product.id}">${product.productName}</a></td>`).appendTo(tr);
+						$(`<td align="right">${product.price}</td>`).appendTo(tr);
+						$('<td><input type="number" id="productCount" class="count number" value="0" min="0" step="1"></td>').appendTo(tr); 
+						$(`<input type="hidden" id="productId" value="${product.id}">`).appendTo(tr);
+						$('<td><button id="addBtn">追加</button></td>').appendTo(tr);
+
+						$(tr).appendTo(tbody);
+					});
+				}
+			},
+			() => {
+				console.error('Error: ajax connection failed.');
+				}
+		);
+	};
+
+	/* 追加ボタンを押された行の個数と商品IDを取得し、個数チェックの上決済処理を呼び出す */
+	let add = (event) => {
+		let tr = $(event.target).parent().parent();
+		const productCount = $(tr).find('#productCount').val();
+		const productId = $(tr).find('#productId').val();
+
+		/* validator.js のaddCartメソッドを呼び出し */
+		addCart(productId, productCount);
+	};
+	</script>
+</main>
+
+</body>
+</html>
